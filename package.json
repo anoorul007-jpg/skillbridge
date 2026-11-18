@@ -1,0 +1,11 @@
+{
+  "name": "skillbridge-platform",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SkillBridge – AI-Powered Skill Development & Career Guidance Platform",
+  "scripts": {
+    "build": "npm run build --prefix frontend",
+    "install:all": "npm install --prefix frontend",
+    "dev": "npm run dev --prefix frontend"
+  }
+}

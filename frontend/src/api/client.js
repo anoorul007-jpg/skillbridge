@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { getMockResponse } from './mockFallback';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
@@ -28,12 +29,18 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Intercept 401s and handle logout/refresh
+// Resilient response interceptor:
+// 1. If backend responds -> returns live backend response
+// 2. If network error occurs (e.g. Vercel deployment before backend is hosted) -> serves interactive demo data!
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response && error.response.status === 401) {
-      // If unauthorized on a protected route, let the app handle redirection
+    if (!error.response || error.code === 'ERR_NETWORK' || error.message?.includes('Network Error')) {
+      const mock = getMockResponse(error.config);
+      if (mock) {
+        console.warn(`[SkillBridge] Backend offline/unreachable. Serving fallback data for: ${error.config.url}`);
+        return Promise.resolve(mock);
+      }
     }
     return Promise.reject(error);
   }

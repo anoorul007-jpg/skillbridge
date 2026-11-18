@@ -1,10 +1,22 @@
 import axios from 'axios';
 import { getMockResponse } from './mockFallback';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+const getApiBaseUrl = () => {
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+  if (typeof window !== 'undefined' && window.location) {
+    const host = window.location.hostname;
+    // If accessed across LAN (e.g. 192.168.x.x, 10.x.x.x), dynamically use that host IP
+    if (host && host !== 'localhost' && host !== '127.0.0.1' && !host.includes('vercel.app')) {
+      return `http://${host}:8000/api`;
+    }
+  }
+  return 'http://localhost:8000/api';
+};
 
 const apiClient = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: getApiBaseUrl(),
   headers: {
     'Content-Type': 'application/json',
   },
@@ -31,14 +43,15 @@ apiClient.interceptors.request.use(
 
 // Resilient response interceptor:
 // 1. If backend responds -> returns live backend response
-// 2. If network error occurs (e.g. Vercel deployment before backend is hosted) -> serves interactive demo data!
+// 2. If network error occurs (e.g. Vercel deployment before backend is hosted, or accessing on another device)
+//    -> serves dynamic, interactive mock data with full CRUD persistence!
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (!error.response || error.code === 'ERR_NETWORK' || error.message?.includes('Network Error')) {
       const mock = getMockResponse(error.config);
       if (mock) {
-        console.warn(`[SkillBridge] Backend offline/unreachable. Serving fallback data for: ${error.config.url}`);
+        console.warn(`[SkillBridge] Backend offline/remote. Serving fallback response for: ${error.config.url}`);
         return Promise.resolve(mock);
       }
     }
